@@ -24,9 +24,10 @@ class Suggestions(commands.Cog):
         embed.add_field(name='The suggestion', value=f'```{suggestion}```', inline=False)
         icon_url=interaction.user.display_avatar
         embed.set_footer(text="Developed by Gnomeslayer#5551", icon_url=icon_url)
-        await suggestionschannel.send(embed=embed)
+        suggestion_message = await suggestionschannel.send(embed=embed)
+        message_id = suggestion_message.id
         await interaction.response.send_message("Thank you for making a suggestion!", ephemeral=True)
-        current_suggestion = [{'suggester': str(interaction.user), 'suggester_id': int(interaction.user.id), 'suggestion': suggestion, 'status': 'Unreviewed', 'response': 'None'}]
+        current_suggestion = [{'message_id': message_id, 'suggester': str(interaction.user), 'suggester_id': int(interaction.user.id), 'suggestion': suggestion, 'status': 'Unreviewed', 'response': 'None'}]
         stored_suggestions += current_suggestion
         with open('suggestions.json', 'w') as f:
             f.write(json.dumps(stored_suggestions, indent=4))
@@ -40,13 +41,19 @@ class Suggestions(commands.Cog):
             stored_suggestions = json.load(f)
         stored_suggestions[suggestion_number]['response'] = response
         stored_suggestions[suggestion_number]['status'] = 'rejected'
+        
+        responsechannel = interaction.guild.get_channel(self.config['suggestions_response_channel'])
+        suggestionschannel = interaction.guild.get_channel(self.config['suggestions_channel'])
         suggester = interaction.guild.get_member(stored_suggestions[suggestion_number]['suggester_id'])
+        message = await suggestionschannel.fetch_message(stored_suggestions[suggestion_number]['message_id'])
+        await message.delete()
+        
         embed = discord.Embed(title=f"Suggestion #{suggestion_number} from {stored_suggestions[suggestion_number]['suggester']}", color=0x552E12)
         embed.add_field(name='The suggestion', value=f"```{stored_suggestions[suggestion_number]['suggestion']}```", inline=False)
         embed.add_field(name='Status', value=f"Rejected.", inline=False)
         embed.add_field(name='Response', value=f"```{response}```", inline=False)
+        embed.set_footer(text="Developed by Gnomeslayer#5551")
         
-        responsechannel = interaction.guild.get_channel(self.config['suggestions_response_channel'])
         if self.config['send_response_to_channel']:
             await responsechannel.send(embed=embed)
         with open('suggestions.json', 'w') as f:
@@ -70,13 +77,18 @@ class Suggestions(commands.Cog):
             stored_suggestions = json.load(f)
         stored_suggestions[suggestion_number]['response'] = response
         stored_suggestions[suggestion_number]['status'] = 'approved'
+        
+        responsechannel = interaction.guild.get_channel(self.config['suggestions_response_channel'])
+        suggestionschannel = interaction.guild.get_channel(self.config['suggestions_channel'])
         suggester = interaction.guild.get_member(stored_suggestions[suggestion_number]['suggester_id'])
+        message = await suggestionschannel.fetch_message(stored_suggestions[suggestion_number]['message_id'])
+        await message.delete()
+        
         embed = discord.Embed(title=f"Suggestion #{suggestion_number} from {stored_suggestions[suggestion_number]['suggester']}", color=0x552E12)
         embed.add_field(name='The suggestion', value=f"```{stored_suggestions[suggestion_number]['suggestion']}```", inline=False)
         embed.add_field(name='Status', value=f"Approved.", inline=False)
         embed.add_field(name='Response', value=f"```{response}```", inline=False)
-        
-        responsechannel = interaction.guild.get_channel(self.config['suggestions_response_channel'])
+        embed.set_footer(text="Developed by Gnomeslayer#5551")
         if self.config['send_response_to_channel']:
             await responsechannel.send(embed=embed)
         with open('suggestions.json', 'w') as f:
