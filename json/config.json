@@ -1,0 +1,11 @@
+{
+    "discord_token": "",
+    "prefix": "!",
+    "application_id": 917258496255336479,
+    "suggestions_channel": 1014854106696925255,
+    "suggestions_response_channel": 1014854106696925255,
+    "send_response_to_user": true,
+    "send_response_to_channel": true,
+    "color": "0xe67e22"
+}
+
