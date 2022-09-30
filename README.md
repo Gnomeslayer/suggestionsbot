@@ -3,9 +3,7 @@ Suggestions bot allows users in your community to make a suggestion and the serv
 
 Commands
 --------------------------
-/apply <br />
-/approvesuggestion <br />
-/rejectesuggestion <br />
+/suggest
 
 The bot requires several API keys to begin functioning.
 --------------------------
