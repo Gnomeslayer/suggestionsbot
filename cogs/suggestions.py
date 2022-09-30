@@ -35,8 +35,24 @@ class AdminButtons(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
         self.suggestion_id = 0
+        self.admin_suggestion = ''
         
-
+    @discord.ui.button(label="Approve Suggestion", style=discord.ButtonStyle.green)
+    async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.guild_permissions.administrator:
+            responseform = ResponseForm_approve()
+            responseform.suggestion_number = self.suggestion_id
+            responseform.admin_suggestion = self.admin_suggestion
+            await interaction.response.send_modal(responseform)
+        
+        
+    @discord.ui.button(label="Reject Suggestion", style=discord.ButtonStyle.red)
+    async def Reject(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.guild_permissions.administrator:
+            responseform = ResponseForm_reject()
+            responseform.suggestion_number = self.suggestion_id
+            responseform.admin_suggestion = self.admin_suggestion
+            await interaction.response.send_modal(responseform)
 
 class VoteButtons(discord.ui.View):
     def __init__(self):
@@ -64,6 +80,8 @@ class VoteButtons(discord.ui.View):
             icon_url=self.icon
             embed.set_footer(text=f"{self.footer}", icon_url=icon_url)
             await interaction.response.edit_message(embed=embed, view=self)
+        else:
+            await interaction.response.send_message("You've already voted.", ephemeral=True)
         
         
     @discord.ui.button(label="Vote Against", style=discord.ButtonStyle.red)
@@ -78,21 +96,9 @@ class VoteButtons(discord.ui.View):
             icon_url=self.icon
             embed.set_footer(text=f"{self.footer}", icon_url=icon_url)
             await interaction.response.edit_message(embed=embed, view=self)
-        
-    @discord.ui.button(label="Approve Suggestion", style=discord.ButtonStyle.green)
-    async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.guild_permissions.administrator:
-            responseform = ResponseForm_approve()
-            responseform.suggestion_number = self.suggestion_id
-            await interaction.response.send_modal(responseform)
-        
-        
-    @discord.ui.button(label="Reject Suggestion", style=discord.ButtonStyle.red)
-    async def Reject(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.guild_permissions.administrator:
-            responseform = ResponseForm_reject()
-            responseform.suggestion_number = self.suggestion_id
-            await interaction.response.send_modal(responseform)
+        else:
+            await interaction.response.send_message("You've already voted.", ephemeral=True)
+    
         
 class SuggestionForm(discord.ui.Modal, title="Suggest something!"):
     def __init__(self):
@@ -116,6 +122,9 @@ class SuggestionForm(discord.ui.Modal, title="Suggest something!"):
         with open('./json/suggestions.json', 'r') as f:
             stored_suggestions = json.load(f)
         suggestionschannel = interaction.guild.get_channel(config['suggestions_channel'])
+        adminchannel = interaction.guild.get_channel(config['admin_suggestions_channel'])
+        
+        
         
         buttons.suggestion_id = len(stored_suggestions)
         embed = discord.Embed(title=f'Suggestion #{len(stored_suggestions)} from {interaction.user}', color=int(config['suggestion_color'], base=16))
@@ -129,6 +138,8 @@ class SuggestionForm(discord.ui.Modal, title="Suggest something!"):
         
         
         suggestion_message = await suggestionschannel.send(embed=embed, view=votebuttons)
+        adminmsg = await adminchannel.send(embed=embed, view=buttons)
+        buttons.admin_suggestion = adminmsg.id
         votebuttons.message = suggestion_message
         votebuttons.suggestion_id = len(stored_suggestions)
         votebuttons.footer = config['footer_text']
@@ -152,6 +163,7 @@ class ResponseForm_approve(discord.ui.Modal, title="Approval form"):
     def __init__(self):
         super().__init__()
         self.suggestion_number = 0
+        self.admin_suggestion = ''
     
     myresponse = discord.ui.TextInput(
         label="Reason for approving this suggestion?",
@@ -170,10 +182,12 @@ class ResponseForm_approve(discord.ui.Modal, title="Approval form"):
                
         responsechannel = interaction.guild.get_channel(config['suggestions_response_channel'])
         suggestionschannel = interaction.guild.get_channel(config['suggestions_channel'])
+        adminchannel = interaction.guild.get_channel(config['admin_suggestions_channel'])
         stored_suggestions[self.suggestion_number]['response'] = self.myresponse.value
         stored_suggestions[self.suggestion_number]['status'] = 'approved'
         suggester = interaction.guild.get_member(stored_suggestions[self.suggestion_number]['suggester_id'])
         message = await suggestionschannel.fetch_message(stored_suggestions[self.suggestion_number]['message_id'])
+        adminmsg = await adminchannel.fetch_message(self.admin_suggestion)
         embed = discord.Embed(title=f"Suggestion #{self.suggestion_number} from {stored_suggestions[self.suggestion_number]['suggester']}", color=int(config['approval_color'], base=16))
         embed.add_field(name='The suggestion', value=f"```{stored_suggestions[self.suggestion_number]['suggestion']}```", inline=False)
         embed.add_field(name='Status', value=f"Approved.", inline=False)
@@ -186,7 +200,7 @@ class ResponseForm_approve(discord.ui.Modal, title="Approval form"):
             await interaction.response.send_message("Thank you for approving this suggestion!", ephemeral=True)
         
         await message.delete()
-        
+        await adminmsg.delete()
         
         if config['send_response_to_channel']:
             await responsechannel.send(embed=embed)
@@ -204,6 +218,7 @@ class ResponseForm_reject(discord.ui.Modal, title="Reject form"):
     def __init__(self):
         super().__init__()
         self.suggestion_number = 0
+        self.admin_suggestion = ''
     
     myresponse = discord.ui.TextInput(
         label="Reason for rejecting this suggestion?",
@@ -231,6 +246,10 @@ class ResponseForm_reject(discord.ui.Modal, title="Reject form"):
         embed.add_field(name='Status', value=f"Rejected.", inline=False)
         embed.add_field(name='Response', value=f"```{self.myresponse.value}```", inline=False)
         embed.set_footer(text=f"{config['footer_text']}")
+        
+        adminchannel = interaction.guild.get_channel(config['admin_suggestions_channel'])
+        adminmsg = await adminchannel.fetch_message(self.admin_suggestion)
+        
         if config['send_response_to_user']:
             await suggester.send(embed=embed)
             await interaction.response.send_message("Thank you for rejecting a suggestion!\nI have contacted the person who made the suggestion.", ephemeral=True)
@@ -238,6 +257,7 @@ class ResponseForm_reject(discord.ui.Modal, title="Reject form"):
             await interaction.response.send_message("Thank you for rejecting this suggestion!", ephemeral=True)
         
         await message.delete()
+        await adminmsg.delete()
         
         
         if config['send_response_to_channel']:
