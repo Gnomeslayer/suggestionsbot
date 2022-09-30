@@ -4,6 +4,7 @@
     "application_id": 917258496255336479,
     "suggestions_channel": 1014854106696925255,
     "suggestions_response_channel": 1014854106696925255,
+    "admin_suggestions_channel": 1025529948208910376,
     "send_response_to_user": true,
     "send_response_to_channel": true,
     "suggestion_color": "0x71368a",
